@@ -1,0 +1,13 @@
+# Example experiment config placeholder (attitude slew with sun cone)
+controller:
+  kind: nmpc
+  horizon: 40
+model:
+  kind: attitude
+  dt: 0.2
+safety:
+  cbfs: [sun_cone]
+solver:
+  nlp: { tol: 1e-6, max_iter: 1000 }
+sim:
+  T_steps: 150

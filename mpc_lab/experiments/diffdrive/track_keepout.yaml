@@ -1,0 +1,13 @@
+# Example experiment config placeholder (diff-drive with keep-outs)
+controller:
+  kind: linear
+  horizon: 20
+model:
+  kind: diffdrive
+  dt: 0.1
+safety:
+  cbfs: []
+solver:
+  qp: { tolerance: 1e-6, max_iter: 4000 }
+sim:
+  T_steps: 200

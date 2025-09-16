@@ -1,5 +1,6 @@
 README.md
 pyproject.toml
+examples/diffdrive_linear_mpc_rollout.py
 examples/hello_pipeline.py
 mpc_lab/__init__.py
 mpc_lab/constants.py
@@ -31,6 +32,7 @@ mpc_lab/koopman/bundle.py
 mpc_lab/koopman/features.py
 mpc_lab/koopman/learners.py
 mpc_lab/koopman/metrics.py
+mpc_lab/modeling/diffdrive.py
 mpc_lab/modeling/constraints/keepouts.py
 mpc_lab/modeling/constraints/primitives.py
 mpc_lab/modeling/constraints/sun_cone.py
@@ -54,5 +56,6 @@ mpc_lab/utils/logging.py
 mpc_lab/utils/seed.py
 mpc_lab/utils/timers.py
 mpc_lab/viz/plots.py
+tests/test_diffdrive_linear_mpc.py
 tests/test_imports.py
 tests/test_smoke_phase1.py

@@ -1,5 +1,6 @@
-from typing import Protocol, Optional, Dict, Any, Tuple, TypedDict
+from typing import Protocol, Optional, Dict, Any, TypedDict
 import numpy as np
+from ..constants import SolveStatus
 
 class MPCInfo(TypedDict):
     obj: float

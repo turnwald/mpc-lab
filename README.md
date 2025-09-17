@@ -1,1 +1,1 @@
-# mpc-lab
+# MPC-Lab Baseline NMPC

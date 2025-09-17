@@ -1,6 +1,0 @@
-from typing import Protocol, Optional, Dict, Any
-import numpy as np
-
-class NLPFacade(Protocol):
-    def compile(self, problem: dict, opts: Optional[Dict[str, Any]] = None) -> None: ...
-    def solve(self, params: Dict[str, np.ndarray], warmstart: Optional[Dict[str, np.ndarray]] = None) -> Dict[str, np.ndarray]: ...

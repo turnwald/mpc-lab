@@ -1,5 +1,0 @@
-configs
-examples
-mpc_lab
-scripts
-tests

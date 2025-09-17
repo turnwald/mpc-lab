@@ -1,1 +1,0 @@
-Model config samples live here.

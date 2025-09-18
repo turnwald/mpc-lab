@@ -1,7 +1,7 @@
 """Closed-loop rollout for rover NMPC with warm-start."""
 import casadi as ca
-from mpc_lab.models.rover_unicycle import RoverUnicycleModel
-from mpc_lab.nmpc.build_rover import build_rover_nmpc
+from models.rover_unicycle import RoverUnicycleModel
+from nmpc.build_rover import build_rover_nmpc
 
 def shift_u_warm_start(Uopt: ca.DM) -> ca.DM:
     nu, N = int(Uopt.size1()), int(Uopt.size2())

@@ -1,7 +1,8 @@
 import math
 import casadi as ca
-from mpc_lab.models.attitude_quat import AttitudeQuatModel
-from mpc_lab.nmpc.build_attitude import build_attitude_nmpc
+
+from nmpc.build_attitude import build_attitude_nmpc
+from models.attitude_quat import AttitudeQuatModel
 
 def main():
     dt = 0.1

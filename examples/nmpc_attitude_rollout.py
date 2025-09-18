@@ -1,8 +1,8 @@
 """Closed-loop rollout for attitude NMPC with warm-start."""
 import math
 import casadi as ca
-from mpc_lab.models.attitude_quat import AttitudeQuatModel
-from mpc_lab.nmpc.build_attitude import build_attitude_nmpc
+from models.attitude_quat import AttitudeQuatModel
+from nmpc.build_attitude import build_attitude_nmpc
 
 def shift_u_warm_start(Uopt: ca.DM) -> ca.DM:
     """Shift optimal input sequence forward by one and append last value."""

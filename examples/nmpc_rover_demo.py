@@ -1,6 +1,6 @@
 import casadi as ca
-from mpc_lab.models.rover_unicycle import RoverUnicycleModel
-from mpc_lab.nmpc.build_rover import build_rover_nmpc
+from models.rover_unicycle import RoverUnicycleModel
+from nmpc.build_rover import build_rover_nmpc
 
 def main():
     dt = 0.1

@@ -1,66 +1,54 @@
-import csv
-from pathlib import Path
+import casadi as ca
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Qt5Agg")  # always render to files
 
-def plot_attitude_rollout(csv_path: str, out_png: str):
-    xs = []
-    qw, qx, qy, qz = [], [], [], []
-    wx, wy, wz = [], [], []
-    with open(csv_path, newline="") as f:
-        r = csv.DictReader(f)
-        for row in r:
-            xs.append(float(row["t"]))
-            qw.append(float(row["qw"])); qx.append(float(row["qx"])); qy.append(float(row["qy"])); qz.append(float(row["qz"]))
-            wx.append(float(row["wx"])); wy.append(float(row["wy"])); wz.append(float(row["wz"]))
+def plot_attitude_rollout(times, Q_hist, W_hist, U_hist):
+    """times: list[float]; Q_hist: list[DM(4,1)]; W_hist: list[DM(3,1)]; U_hist: list[DM(3,1)]"""
+    t = times
+    qw = [float(q[0,0]) for q in Q_hist]
+    qx = [float(q[1,0]) for q in Q_hist]
+    qy = [float(q[2,0]) for q in Q_hist]
+    qz = [float(q[3,0]) for q in Q_hist]
+    wx = [float(w[0,0]) for w in W_hist]
+    wy = [float(w[1,0]) for w in W_hist]
+    wz = [float(w[2,0]) for w in W_hist]
+    tx = [float(u[0,0]) for u in U_hist]
+    ty = [float(u[1,0]) for u in U_hist]
+    tz = [float(u[2,0]) for u in U_hist]
 
-    # Figure 1: quaternion components
     plt.figure()
-    plt.plot(xs, qw, label="qw")
-    plt.plot(xs, qx, label="qx")
-    plt.plot(xs, qy, label="qy")
-    plt.plot(xs, qz, label="qz")
-    plt.xlabel("t [s]"); plt.ylabel("q components"); plt.legend()
-    Path(out_png).parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(out_png, bbox_inches="tight")
-    plt.close()
+    plt.plot(t, qw); plt.plot(t, qx); plt.plot(t, qy); plt.plot(t, qz)
+    plt.xlabel("time [s]"); plt.ylabel("quaternion"); plt.title("q(t)")
 
-    # Figure 2: body rates
-    out2 = str(Path(out_png).with_name(Path(out_png).stem + "_rates.png"))
     plt.figure()
-    plt.plot(xs, wx, label="wx")
-    plt.plot(xs, wy, label="wy")
-    plt.plot(xs, wz, label="wz")
-    plt.xlabel("t [s]"); plt.ylabel("ω [rad/s]"); plt.legend()
-    plt.savefig(out2, bbox_inches="tight")
-    plt.close()
+    plt.plot(t, wx); plt.plot(t, wy); plt.plot(t, wz)
+    plt.xlabel("time [s]"); plt.ylabel("ω [rad/s]"); plt.title("omega(t)")
 
-    return out_png, out2
-
-def plot_rover_rollout(csv_path: str, out_png: str):
-    xs = []
-    Xs, Ys, Ths = [], [], []
-    with open(csv_path, newline="") as f:
-        r = csv.DictReader(f)
-        for row in r:
-            xs.append(float(row["t"]))
-            Xs.append(float(row["x"]))
-            Ys.append(float(row["y"]))
-            Ths.append(float(row["theta"]))
-
-    # Figure 1: trajectory XY
     plt.figure()
-    plt.plot(Xs, Ys, label="trajectory")
-    plt.xlabel("x [m]"); plt.ylabel("y [m]"); plt.axis("equal"); plt.legend()
-    Path(out_png).parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(out_png, bbox_inches="tight")
-    plt.close()
+    plt.plot(t, tx); plt.plot(t, ty); plt.plot(t, tz)
+    plt.xlabel("time [s]"); plt.ylabel("τ [Nm]"); plt.title("u(t)")
 
-    # Figure 2: heading vs time
-    out2 = str(Path(out_png).with_name(Path(out_png).stem + "_theta.png"))
+    plt.show()
+
+def plot_rover_rollout(times, X_hist, U_hist):
+    t = times
+    x = [float(xk[0,0]) for xk in X_hist]
+    y = [float(xk[1,0]) for xk in X_hist]
+    th = [float(xk[2,0]) for xk in X_hist]
+    v = [float(uk[0,0]) for uk in U_hist]
+    om = [float(uk[1,0]) for uk in U_hist]
+
     plt.figure()
-    plt.plot(xs, Ths, label="theta")
-    plt.xlabel("t [s]"); plt.ylabel("θ [rad]"); plt.legend()
-    plt.savefig(out2, bbox_inches="tight")
-    plt.close()
+    plt.plot(x, y)
+    plt.xlabel("x [m]"); plt.ylabel("y [m]"); plt.title("Rover path")
 
-    return out_png, out2
+    plt.figure()
+    plt.plot(t, th)
+    plt.xlabel("time [s]"); plt.ylabel("theta [rad]"); plt.title("Heading")
+
+    plt.figure()
+    plt.plot(t, v); plt.plot(t, om)
+    plt.xlabel("time [s]"); plt.ylabel("inputs"); plt.title("v, omega")
+
+    plt.show()

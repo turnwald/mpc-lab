@@ -1,0 +1,5 @@
+# Core scientific stack for MPC-Lab (minimal)
+casadi==3.6.7
+numpy>=1.26,<2.0
+pytest>=8.0
+# add more as you need (matplotlib, scipy, etc.)

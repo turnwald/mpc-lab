@@ -1,0 +1,3 @@
+# Optional ML stack (install only if needed)
+torch
+# You can also add: scikit-learn, jax[cpu], etc.

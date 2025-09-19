@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mpc-lab"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "casadi==3.6.7",
+  "matplotlib",
+]
+
+[tool.setuptools.packages.find]
+include = ["mpc_lab*"]

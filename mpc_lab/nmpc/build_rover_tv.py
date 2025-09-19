@@ -1,17 +1,28 @@
+# mpc_lab/nmpc/build_rover_tv.py
+import math
 import casadi as ca
 from .solver_probe import make_solver
-import math
-
+from mpc_lab.constraints.boxes import apply_state_bounds, apply_input_bounds
+from mpc_lab.constraints.linear_sets import add_stagewise_ineq
 
 def build_rover_nmpc_tv(model, N: int, weights=None, bounds=None,
                         solver_opts=None, state_box=None, linear_state_ineq=None):
     """
-    Rover NMPC with time-varying refs.
-    p = [x0(3); xref_stack(3*(N+1))].
+    Rover NMPC with time-varying references and constraints via helpers.
 
-    New:
-      state_box: dict with optional 'lbx' and 'ubx' of shape (nx,1) or (nx,)
-      linear_state_ineq: dict with 'H' (m x nx) and 'h' (m x 1); enforces H x_k <= h for k=0..N
+    Parameters
+    ----------
+    model : RoverUnicycleModel-like with .nx, .nu, .dt, .step(x,u)
+    N     : horizon length
+    weights : dict {w_pos, w_heading, wu, wdu}
+    bounds  : dict {v_min, v_max, om_min, om_max}
+    solver_opts : dict passed to nlpsol
+    state_box : optional dict {"lbx": (nx,1), "ubx": (nx,1)} applied to X[:,k] for k=0..N
+    linear_state_ineq : optional {"H": (m x nx), "h": (m x 1)} enforcing H x_k <= h for k=0..N
+
+    Returns
+    -------
+    dict with keys: solver, plugin, pack_p, solve_one_step, nx, nu, N
     """
     w = {"w_pos": 10.0, "w_heading": 1.0, "wu": 1e-2, "wdu": 1e-3}
     if weights: w.update(weights)
@@ -19,18 +30,22 @@ def build_rover_nmpc_tv(model, N: int, weights=None, bounds=None,
     if bounds: b.update(bounds)
 
     nx, nu = model.nx, model.nu
+    assert nx == 3 and nu == 2, "Rover builder expects (nx=3, nu=2)."
+
+    # Decision variables
     X = ca.MX.sym("X", nx, N+1)
     U = ca.MX.sym("U", nu, N)
 
+    # Parameters: x0 and stacked refs (3*(N+1))
     p = ca.MX.sym("p", nx + 3*(N+1), 1)
     x0 = p[0:nx, :]
     xref_stack = p[nx:nx+3*(N+1), :]
-
     def xr_k(k): return xref_stack[3*k:3*(k+1), :]
 
+    # Objective and constraints
     J = ca.MX(0)
-    g_eq = []      # equalities (dynamics + initial condition)
-    g_ineq = []    # inequalities (linear state sets)
+    g_eq = []
+    g_ineq = []
 
     # Initial condition
     g_eq.append(X[:, 0] - x0)
@@ -50,11 +65,13 @@ def build_rover_nmpc_tv(model, N: int, weights=None, bounds=None,
         # Dynamics
         g_eq.append(X[:, k+1] - model.step(xk, uk))
 
-        # Linear state set: H x_k <= h
+        # Stagewise linear state inequalities: H x_k <= h
         if linear_state_ineq is not None:
-            H = ca.DM(linear_state_ineq["H"])  # (m x nx)
-            h = ca.DM(linear_state_ineq["h"]).reshape((-1,1))  # (m x 1)
-            g_ineq.append(H @ xk - h)
+            H = linear_state_ineq["H"]
+            h = linear_state_ineq["h"]
+            add_stagewise_ineq(g_ineq, X, H, h, N, slc=None)
+            # Only add once outside loop; break to avoid duplicate appends
+            linear_state_ineq = None  # sentinel to avoid re-appending
 
     # Terminal cost
     xN = X[:, N]
@@ -66,41 +83,28 @@ def build_rover_nmpc_tv(model, N: int, weights=None, bounds=None,
     # Pack decision variables
     W = ca.vertcat(ca.reshape(X, nx*(N+1), 1), ca.reshape(U, nu*N, 1))
 
-    # Variable bounds (default unbounded)
+    # Variable bounds
     lbw = [-ca.inf]*(nx*(N+1) + nu*N)
     ubw = [ ca.inf]*(nx*(N+1) + nu*N)
 
-    # State box bounds (per state, all stages)
+    # Apply state box bounds (if provided)
     if state_box is not None:
         lbx_vec = state_box.get("lbx", None)
         ubx_vec = state_box.get("ubx", None)
-        if lbx_vec is not None:
-            lbx_vec = ca.DM(lbx_vec).reshape((nx,1))
-        if ubx_vec is not None:
-            ubx_vec = ca.DM(ubx_vec).reshape((nx,1))
-        for k in range(N+1):
-            for i in range(nx):
-                idx = i + nx*k
-                if lbx_vec is not None and not math.isinf(lbx_vec[i,0]):
-                    lbw[idx] = float(lbx_vec[i,0])
-                if ubx_vec is not None and not math.isinf(ubx_vec[i,0]):
-                    ubw[idx] = float(ubx_vec[i,0])
+        apply_state_bounds(lbw, ubw, nx, N, lbx_vec=lbx_vec, ubx_vec=ubx_vec)
 
-
-    # Input bounds
+    # Apply input bounds
     u_off = nx*(N+1)
-    for k in range(N):
-        lbw[u_off + 0 + 2*k] = float(b["v_min"])
-        ubw[u_off + 0 + 2*k] = float(b["v_max"])
-        lbw[u_off + 1 + 2*k] = float(b["om_min"])
-        ubw[u_off + 1 + 2*k] = float(b["om_max"])
+    apply_input_bounds(lbw, ubw, u_off, nu, N,
+                       umin_vec=[b["v_min"], b["om_min"]],
+                       umax_vec=[b["v_max"], b["om_max"]])
 
-    # Constraints vector and bounds
+    # Constraint vector and bounds
     g = ca.vertcat(*(g_eq + g_ineq)) if len(g_ineq)>0 else ca.vertcat(*g_eq)
-    lbg = ca.DM.zeros(g.shape)
-    ubg = ca.DM.zeros(g.shape)
-    if len(g_ineq) > 0:
-        # First |g_eq| are equalities -> [0,0]; the rest are inequalities -> (-inf, 0]
+    if len(g_ineq) == 0:
+        lbg = ca.DM.zeros(g.shape)
+        ubg = ca.DM.zeros(g.shape)
+    else:
         neq = sum(gi.size1() for gi in g_eq)
         nineq = sum(gi.size1() for gi in g_ineq)
         lbg = ca.vertcat(ca.DM.zeros(neq,1), (-ca.inf)*ca.DM.ones(nineq,1))
@@ -121,7 +125,6 @@ def build_rover_nmpc_tv(model, N: int, weights=None, bounds=None,
         if u_init is not None:
             u_init = ca.DM(u_init)
             W0[nx*(N+1):] = ca.reshape(u_init, nu*N, 1)
-
         sol = solver(x0=W0, p=pack_p(x0_dm, xref_seq),
                      lbx=ca.DM(lbw), ubx=ca.DM(ubw), lbg=lbg, ubg=ubg)
         Wopt = sol["x"]
